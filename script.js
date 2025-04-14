@@ -21,7 +21,7 @@ async function sendMessage() {
     userInput.value = '';
 
     // 3. 顯示 "AI 正在輸入..." 的提示
-    const loadingMessageElement = appendMessage('AI 正在思考中...', 'ai loading'); // 使用特殊 class 標記
+    const loadingMessageElement = appendMessage('AI 正在思考中...', 'ai-loading'); // 使用特殊 class 標記
 
     try {
         // 4. 發送請求到 Cloudflare Worker
@@ -70,26 +70,51 @@ async function sendMessage() {
 // 將訊息附加到聊天框的輔助函數
 function appendMessage(text, senderType) {
     const messageElement = document.createElement('div');
-    messageElement.classList.add('message', `${senderType}-message`); // 添加基礎和特定類別 (例如 user-message, ai-message)
-    if (senderType === 'ai loading') { // 如果是載入中訊息，添加特殊類別
+    messageElement.classList.add('message', `${senderType}-message`);
+    if (senderType === 'ai-loading') {
         messageElement.classList.add('loading');
     }
-    if (senderType === 'ai error') { // 如果是錯誤訊息
-         messageElement.style.backgroundColor = '#ffdddd'; // 用不同背景標示錯誤
+    if (senderType === 'ai error') {
+         messageElement.style.backgroundColor = '#ffdddd';
          messageElement.style.color = '#d8000c';
     }
 
-    const paragraph = document.createElement('p');
-    // 將換行符 \n 轉換為 <br> 標籤以在 HTML 中正確顯示換行
-    paragraph.innerHTML = text.replace(/\n/g, '<br>');
-    messageElement.appendChild(paragraph);
+    // 建立一個容器來放訊息內容
+    const contentContainer = document.createElement('div');
+    contentContainer.classList.add('message-content'); // 給它一個 class 方便未來調整樣式
 
-    chatbox.appendChild(messageElement);
+    // --- 主要修改處：判斷是否為 AI 訊息並使用 Marked.js ---
+    if (senderType === 'ai' || senderType === 'ai-message') { // 檢查是否為標準的 AI 回覆訊息
+        try {
+            // 檢查 marked 函式庫是否已成功載入
+            if (typeof marked === 'undefined') {
+                 console.error("錯誤：Marked.js 函式庫未載入！");
+                 contentContainer.textContent = text; // 若未載入，直接顯示純文字
+            } else {
+                 // 使用 Marked.js 將 Markdown 語法轉換成 HTML
+                 // **安全性警告：** 這裡沒有對 AI 產生的 HTML 進行過濾。
+                 // 如果擔心 AI 可能產生惡意程式碼，建議搭配使用 DOMPurify 等過濾函式庫。
+                 // 例如: contentContainer.innerHTML = DOMPurify.sanitize(marked.parse(text));
+                 // 目前為了簡單起見，我們先直接使用：
+                 contentContainer.innerHTML = marked.parse(text);
+            }
+        } catch (e) {
+            console.error("解析 Markdown 時發生錯誤:", e);
+            contentContainer.textContent = text; // 若解析出錯，顯示純文字
+        }
+    } else {
+        // 對於使用者訊息、載入中、錯誤訊息，直接顯示純文字
+        // 使用 textContent 比 innerHTML 更安全 (避免非預期的 HTML 被渲染)
+        contentContainer.textContent = text;
+        // 如果您希望使用者輸入的換行也顯示出來，可以取消註解下面這行：
+        // contentContainer.innerHTML = text.replace(/\n/g, '<br>');
+    }
+    // --- 修改結束 ---
 
-    // 自動滾動到底部，顯示最新訊息
-    chatbox.scrollTop = chatbox.scrollHeight;
-
-    return messageElement; // 回傳創建的元素，方便後續操作 (例如移除 loading 訊息)
+    messageElement.appendChild(contentContainer); // 將內容容器加入訊息元素
+    chatbox.appendChild(messageElement); // 將訊息元素加入聊天框
+    chatbox.scrollTop = chatbox.scrollHeight; // 捲動到底部
+    return messageElement;
 }
 
 // --- 事件監聽 ---
