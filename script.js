@@ -1,5 +1,5 @@
 // --- 請將這裡替換成您 Cloudflare Worker 的實際網址 ---
-const WORKER_URL = 'YOUR_WORKER_URL_HERE';
+const WORKER_URL = 'https://square-mountain-5ffb.eric10041004.workers.dev/';
 // -----------------------------------------------------
 
 const chatbox = document.getElementById('chatbox');
